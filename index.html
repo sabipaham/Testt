@@ -133,6 +133,48 @@
             }
         }
     </style>
+
+    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxJFgLGni59f2mwPwr6p11Kk-CDs5GozZq6qkrw_ZtpLdIKz49NOni8FJSFDp6rtVTQXw/exec';
+
+function saveHabitToSheet(habitName, status, frequency) {
+  const payload = JSON.stringify({
+    habitName: habitName,
+    status: status,
+    frequency: frequency,
+    date: new Date().toLocaleString()
+  });
+
+  fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'text/plain;charset=utf-8',
+    },
+    body: payload
+  })
+  .then(res => res.json())
+  .then(data => {
+    console.log('Data habit berhasil disimpan ke Sheets:', data);
+  })
+  .catch(err => console.error('Gagal menyimpan:', err));
+}
+function loadHabitsFromSheet() {
+  fetch(APPS_SCRIPT_URL)
+    .then(res => res.json())
+    .then(result => {
+      if (result.status === "success") {
+        const allHabits = result.data;
+        console.id('Data ditarik dari Sheets:', allHabits);
+        
+        // Render atau tampilkan data habit tersebut ke UI/Canvas web Anda di sini
+        renderHabitsToUI(allHabits);
+      }
+    })
+    .catch(err => console.error('Gagal memuat data:', err));
+}
+
+// Jalankan otomatis saat halaman selesai dimuat di browser manapun
+document.addEventListener('DOMContentLoaded', loadHabitsFromSheet);
+    
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans min-h-screen flex flex-col antialiased selection:bg-emerald-500 selection:text-white pb-6">
 
