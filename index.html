@@ -53,9 +53,6 @@
     <!-- Canvas Confetti CDN -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 
-    <!-- SheetJS CDN for Excel Export -->
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-
     <!-- Custom CSS Styles -->
     <style>
         /* Custom scrollbar for clean light mode */
@@ -159,17 +156,14 @@
                         <div>
                             <h1 class="font-extrabold text-lg sm:text-xl leading-none tracking-tight text-slate-900 flex items-center gap-1.5">
                                 Yaraka
-                                <span class="text-[10px] uppercase font-bold bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full border border-emerald-200">v0.005</span>
+                                <span class="text-[10px] uppercase font-bold bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full border border-emerald-200">v0.003</span>
                             </h1>
-                            <p class="text-[11px] sm:text-xs text-slate-500 mt-0.5">Habit Tracker & Sheet Sync</p>
+                            <p class="text-[11px] sm:text-xs text-slate-500 mt-0.5">Minimalist Habit Tracker</p>
                         </div>
                     </div>
 
                     <!-- Quick Actions on Mobile Header -->
                     <div class="flex items-center gap-1.5 sm:hidden">
-                        <button onclick="syncAllHabitsToSheet()" class="flex items-center justify-center bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 w-9 h-9 rounded-xl text-xs transition-all active:scale-95" data-tooltip="Sync Google Sheet">
-                            <i class="fa-solid fa-cloud-arrow-up text-emerald-600"></i>
-                        </button>
                         <button onclick="openHabitModal()" class="flex items-center justify-center bg-emerald-600 hover:bg-emerald-500 text-white font-semibold w-9 h-9 rounded-xl text-sm transition-all shadow-md shadow-emerald-500/20 active:scale-95">
                             <i class="fa-solid fa-plus text-sm"></i>
                         </button>
@@ -189,16 +183,8 @@
                         </button>
                     </nav>
 
-                    <!-- Google Sheet & Excel Sync Buttons -->
+                    <!-- Desktop Action Buttons -->
                     <div class="hidden sm:flex items-center gap-2">
-                        <button onclick="syncAllHabitsToSheet()" class="flex items-center gap-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 font-semibold px-3 py-2 rounded-xl text-xs sm:text-sm transition-all active:scale-95 shadow-xs" data-tooltip="Sinkronisasi ke Google Sheet">
-                            <i class="fa-solid fa-cloud-arrow-up text-emerald-600 text-sm"></i>
-                            <span>Sync Sheet</span>
-                        </button>
-                        <button onclick="exportToExcel()" class="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 font-semibold px-3 py-2 rounded-xl text-xs sm:text-sm transition-all active:scale-95 shadow-xs" data-tooltip="Unduh Laporan Excel">
-                            <i class="fa-solid fa-file-excel text-emerald-600 text-sm"></i>
-                            <span>Export</span>
-                        </button>
                         <button onclick="openHabitModal()" class="flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold px-4 py-2 rounded-xl text-xs sm:text-sm transition-all shadow-md shadow-emerald-500/20 active:scale-95 shrink-0">
                             <i class="fa-solid fa-plus text-xs"></i>
                             <span>Tambah Habit</span>
@@ -225,10 +211,6 @@
                         <div class="flex items-center gap-2 text-emerald-700 text-xs sm:text-sm font-semibold">
                             <i class="fa-regular fa-calendar text-xs"></i>
                             <span id="current-date-display">Hari ini, 27 Juli 2026</span>
-                            <span class="inline-flex items-center gap-1 text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-bold ml-1 border border-emerald-200">
-                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                                Google Sheet Sync Active
-                            </span>
                         </div>
                         <h2 class="text-xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
                             Bangun Kebiasaan Baik bersama Yaraka! 🚀
@@ -530,14 +512,11 @@
 
     <script>
         /* ==========================================
-           1. DATA STATE & GOOGLE APPS SCRIPT CONFIG
+           1. DATA STATE & CONFIG
            ========================================== */
         
-        // Key for LocalStorage (Version 0.005)
-        const STORAGE_KEY = 'YARAKA_HABIT_DATA_2026_V5';
-
-        // Google Apps Script Integration Endpoint URL
-        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxJFgLGni59f2mwPwr6p11Kk-CDs5GozZq6qkrw_ZtpLdIKz49NOni8FJSFDp6rtVTQXw/exec';
+        // Key for LocalStorage (Version 0.003)
+        const STORAGE_KEY = 'YARAKA_HABIT_DATA_2026_V3';
 
         // Default Today Date string format YYYY-MM-DD
         const todayObj = new Date();
@@ -566,96 +545,6 @@
             '#f97316'  // Orange
         ];
 
-        /**
-         * Mengirim data habit tunggal atau aksi ke Google Sheet via Google Apps Script Extension
-         */
-        function saveHabitToSheet(habitData, actionType = 'SAVE_HABIT') {
-            const payload = {
-                action: actionType,
-                timestamp: new Date().toISOString(),
-                habit: habitData
-            };
-
-            fetch(APPS_SCRIPT_URL, {
-                method: 'POST',
-                mode: 'no-cors', // Penting untuk menghindari isu CORS
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(payload)
-            })
-            .then(() => {
-                console.log(`[Google Apps Script] Data habit (${actionType}) berhasil dikirim!`);
-            })
-            .catch(err => console.error('[Google Apps Script] Gagal mengirim data:', err));
-        }
-
-        /**
-         * Mensinkronkan seluruh daftar habit ke Google Sheet
-         */
-        function syncAllHabitsToSheet() {
-            showToast('Menskronkan data ke Google Sheet...', 'info');
-
-            const payload = {
-                action: 'SYNC_ALL_HABITS',
-                timestamp: new Date().toISOString(),
-                habitsCount: habits.length,
-                habits: habits
-            };
-
-            fetch(APPS_SCRIPT_URL, {
-                method: 'POST',
-                mode: 'no-cors',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(payload)
-            })
-            .then(() => {
-                showToast('Terhubung & Tersinkron ke Google Sheet! 🟢', 'success');
-            })
-            .catch(err => {
-                console.error('[Google Apps Script] Gagal sinkronisasi:', err);
-                showToast('Gagal terhubung ke Google Sheet.', 'info');
-            });
-        }
-
-        /**
-         * Memuat data habit langsung dari Google Sheet saat halaman pertama kali dibuka
-         */
-        function loadHabitsFromSheet() {
-            showToast('Mencoba memuat data dari Google Sheet...', 'info');
-
-            fetch(APPS_SCRIPT_URL)
-                .then(response => {
-                    if (!response.ok) throw new Error('Respon jaringan mengalami kendala');
-                    return response.json();
-                })
-                .then(result => {
-                    console.log('Data dari spreadsheet:', result.data || result);
-                    const sheetData = result.data || result.habits || (Array.isArray(result) ? result : null);
-                    
-                    if (sheetData && Array.isArray(sheetData) && sheetData.length > 0) {
-                        habits = sheetData;
-                        saveData();
-                        renderCategoryFilters();
-                        renderHabits();
-                        renderDashboardCharts();
-                        if (currentTab === 'yearly') {
-                            renderYearlyHeatmap();
-                            renderYearlyCharts();
-                            updateKPIs();
-                        }
-                        showToast('Data berhasil dimuat dari Google Sheet! 🟢', 'success');
-                    } else {
-                        console.log('Spreadsheet belum memiliki data atau format tidak sesuai, memakai data lokal.');
-                    }
-                })
-                .catch(err => {
-                    console.warn('Gagal memuat data dari Google Sheet (menggunakan cache lokal):', err);
-                });
-        }
-
         // Initialize Application
         window.addEventListener('DOMContentLoaded', () => {
             initData();
@@ -666,9 +555,6 @@
             renderYearlyHeatmap();
             renderYearlyCharts();
             updateKPIs();
-
-            // Panggil data dari spreadsheet saat web selesai dimuat
-            loadHabitsFromSheet();
         });
 
         // Helper: Format Date YYYY-MM-DD
@@ -879,12 +765,10 @@
             if (!habit) return;
 
             const index = habit.history.indexOf(TODAY);
-            let actionType = 'COMPLETE_HABIT';
 
             if (index > -1) {
                 habit.history.splice(index, 1);
                 if (habit.streak > 0) habit.streak--;
-                actionType = 'UNCOMPLETE_HABIT';
                 showToast(`Habit "${habit.title}" dibatalkan.`, 'info');
             } else {
                 habit.history.push(TODAY);
@@ -900,7 +784,7 @@
             }
 
             saveData();
-            saveHabitToSheet(habit, actionType);
+            
             renderHabits();
             renderDashboardCharts();
         }
@@ -910,9 +794,7 @@
             habits = habits.filter(h => h.id !== id);
             
             saveData();
-            if (target) {
-                saveHabitToSheet(target, 'DELETE_HABIT');
-            }
+            
             renderCategoryFilters();
             renderHabits();
             renderDashboardCharts();
@@ -963,22 +845,19 @@
                 category,
                 color,
                 createdAt: TODAY,
-                history: [TODAY],
-                streak: 1
+                history: [],
+                streak: 0
             };
 
             habits.push(newHabit);
             saveData();
-            
-            // Sync dengan Google Apps Script Backend
-            saveHabitToSheet(newHabit, 'ADD_HABIT');
 
             closeHabitModal();
             renderCategoryFilters();
             renderHabits();
             renderDashboardCharts();
             
-            showToast(`Habit "${title}" berhasil disimpan & disinkronkan! 🎉`, 'success');
+            showToast(`Habit "${title}" berhasil disimpan! 🎉`, 'success');
         }
 
         // Toast Notification System
@@ -1325,96 +1204,6 @@
                 if (monthCounts[i] > monthCounts[maxIdx]) maxIdx = i;
             }
             document.getElementById('kpi-best-month').innerText = monthCounts[maxIdx] > 0 ? monthNames[maxIdx] : '-';
-        }
-
-        /* ==========================================
-           6. EXPORT TO EXCEL (.XLS/.XLSX) FUNCTIONALITY
-           ========================================== */
-        function exportToExcel() {
-            if (typeof XLSX === 'undefined') {
-                showToast('Library SheetJS belum siap, silakan coba lagi.', 'info');
-                return;
-            }
-
-            try {
-                const wb = XLSX.utils.book_new();
-
-                // SHEET 1: RINGKASAN & METRIK PERFORMA
-                const summarySheetData = [
-                    ["YARAKA HABIT TRACKER - LAPORAN PERFORMA & KONSISTENSI"],
-                    ["Diproses Pada", new Date().toLocaleDateString('id-ID', { dateStyle: 'full', timeStyle: 'medium' })],
-                    [""],
-                    ["1. METRIK UTAMA"],
-                    ["Total Habit Aktif", habits.length],
-                    ["Total Aktivitas Selesai", document.getElementById('kpi-total-completed')?.innerText || 0],
-                    ["Streak Terpanjang", document.getElementById('kpi-longest-streak')?.innerText || "0 Hari"],
-                    ["Tingkat Keberhasilan (Success Rate)", document.getElementById('kpi-success-rate')?.innerText || "0%"],
-                    ["Bulan Paling Produktif", document.getElementById('kpi-best-month')?.innerText || "-"],
-                    [""],
-                    ["2. PERFORMA MINGGU INI (SENIN - MINGGU)"],
-                    ["Hari", "Tanggal", "Total Habit Selesai"]
-                ];
-
-                const weekDays = getWeeklyDays();
-                weekDays.forEach(d => {
-                    const count = habits.reduce((acc, h) => acc + (h.history.includes(d.dateStr) ? 1 : 0), 0);
-                    summarySheetData.push([d.dayLabel, d.dateStr, count]);
-                });
-
-                summarySheetData.push([""]);
-                summarySheetData.push(["3. TREN BULANAN (MINGGU 1 - 4)"]);
-                summarySheetData.push(["Minggu ke-", "Total Penyelesaian"]);
-
-                const now = new Date();
-                const monthlyCounts = [0, 0, 0, 0];
-                habits.forEach(h => {
-                    h.history.forEach(dateStr => {
-                        const d = new Date(dateStr);
-                        if (d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()) {
-                            const weekIdx = Math.min(3, Math.floor((d.getDate() - 1) / 7));
-                            monthlyCounts[weekIdx]++;
-                        }
-                    });
-                });
-                monthlyCounts.forEach((cnt, idx) => {
-                    summarySheetData.push([`Minggu ${idx + 1}`, cnt]);
-                });
-
-                const wsSummary = XLSX.utils.aoa_to_sheet(summarySheetData);
-                wsSummary['!cols'] = [{ wch: 32 }, { wch: 22 }, { wch: 20 }];
-                XLSX.utils.book_append_sheet(wb, wsSummary, "Ringkasan Performa");
-
-                // SHEET 2: DETAIL HABIT & HISTORI LOG
-                const detailSheetData = [
-                    ["ID Habit", "Nama Habit", "Kategori", "Aksen Warna", "Streak Saat Ini", "Total Selesai", "Tanggal Dibuat", "Daftar Tanggal Selesai (Histori)"]
-                ];
-
-                habits.forEach(h => {
-                    detailSheetData.push([
-                        h.id,
-                        h.title,
-                        h.category,
-                        h.color,
-                        `${h.streak || 0} Hari`,
-                        h.history.length,
-                        h.createdAt || "-",
-                        [...h.history].sort().join(", ")
-                    ]);
-                });
-
-                const wsDetail = XLSX.utils.aoa_to_sheet(detailSheetData);
-                wsDetail['!cols'] = [{ wch: 14 }, { wch: 30 }, { wch: 16 }, { wch: 12 }, { wch: 16 }, { wch: 15 }, { wch: 15 }, { wch: 60 }];
-                XLSX.utils.book_append_sheet(wb, wsDetail, "Detail Habit");
-
-                // Unduh File Excel (.xlsx)
-                const fileName = `Yaraka_Habit_Report_${formatDate(new Date())}.xlsx`;
-                XLSX.writeFile(wb, fileName);
-
-                showToast('Laporan Excel (.xlsx) berhasil diunduh! 📊', 'success');
-            } catch (err) {
-                console.error(err);
-                showToast('Gagal mengunduh file Excel.', 'info');
-            }
         }
 
     </script>
