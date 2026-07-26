@@ -1,0 +1,1280 @@
+<!DOCTYPE html>
+<html lang="id" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yaraka - Minimalist Habit Tracker</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        emerald: {
+                            50: '#ecfdf5',
+                            100: '#d1fae5',
+                            200: '#a7f3d0',
+                            300: '#6ee7b7',
+                            400: '#34d399',
+                            500: '#10b981',
+                            600: '#059669',
+                            700: '#047857',
+                            800: '#065f46',
+                            900: '#064e3b',
+                        },
+                        brand: {
+                            navy: '#1b253b',
+                            coral: '#f86256',
+                            cream: '#f2ebe1'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Canvas Confetti CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <!-- SheetJS (XLSX) CDN for Excel Export -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+    <!-- Custom CSS Styles -->
+    <style>
+        /* Custom scrollbar for clean light mode */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #10b981;
+        }
+        
+        .glass-card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            box-shadow: 0 4px 20px -2px rgba(148, 163, 184, 0.12);
+        }
+
+        .habit-card {
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .habit-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 25px -5px rgba(16, 185, 129, 0.12);
+        }
+
+        /* Tooltip animation */
+        [data-tooltip] {
+            position: relative;
+        }
+        [data-tooltip]:before {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%) translateY(4px);
+            opacity: 0;
+            visibility: hidden;
+            background: #1e293b;
+            color: #ffffff;
+            padding: 5px 9px;
+            font-size: 0.725rem;
+            font-weight: 500;
+            border-radius: 8px;
+            white-space: nowrap;
+            transition: all 0.2s ease;
+            pointer-events: none;
+            z-index: 50;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+        }
+        [data-tooltip]:hover:before {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(-50%) translateY(0);
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans min-h-screen flex flex-col antialiased selection:bg-emerald-500 selection:text-white">
+
+    <!-- HEADER NAVIGATION -->
+    <header class="sticky top-0 z-30 border-b border-slate-200/80 bg-white/80 backdrop-blur-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <!-- Logo & Brand -->
+                <div class="flex items-center gap-3">
+                    <div class="relative w-10 h-10 rounded-xl overflow-hidden shadow-md shadow-slate-200 flex items-center justify-center bg-[#1b253b]">
+                        <!-- Render logo.png if present, fallback to Vector SVG matching logo.png -->
+                        <img src="logo.png" alt="Yaraka Logo" onerror="this.style.display='none'" class="w-full h-full object-cover">
+                        <svg class="w-10 h-10 absolute inset-0 pointer-events-none" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <rect width="100" height="100" rx="28" fill="#1b253b"/>
+                            <path d="M 22 52 C 32 32, 45 32, 53 54 C 61 72, 72 65, 78 48" stroke="#f2ebe1" stroke-width="8" stroke-linecap="round" fill="none"/>
+                            <circle cx="78" cy="47" r="7.5" fill="#f86256"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h1 class="font-extrabold text-xl leading-none tracking-tight text-slate-900 flex items-center gap-2">
+                            Yaraka
+                            <span class="text-[10px] uppercase font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full border border-emerald-200">v0.002</span>
+                        </h1>
+                        <p class="text-xs text-slate-500 mt-0.5">Habit & Consistency Tracker</p>
+                    </div>
+                </div>
+
+                <!-- Navigation Tabs -->
+                <nav class="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
+                    <button id="tab-dashboard-btn" onclick="switchTab('dashboard')" class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all text-white bg-emerald-600 shadow-sm shadow-emerald-600/30">
+                        <i class="fa-solid fa-chart-line text-xs"></i>
+                        <span>Dashboard</span>
+                    </button>
+                    <button id="tab-yearly-btn" onclick="switchTab('yearly')" class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all text-slate-600 hover:text-slate-900 hover:bg-white/60">
+                        <i class="fa-solid fa-calendar-days text-xs"></i>
+                        <span>Yearly Report</span>
+                    </button>
+                </nav>
+
+                <!-- Actions -->
+                <div class="flex items-center gap-2 sm:gap-3">
+                    <button onclick="exportToExcel()" class="flex items-center gap-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 font-semibold px-3 py-2 rounded-xl text-sm transition-all active:scale-95 shadow-xs" data-tooltip="Unduh Laporan Excel">
+                        <i class="fa-solid fa-file-excel text-emerald-600 text-base"></i>
+                        <span class="hidden md:inline">Export Excel (.xls)</span>
+                    </button>
+                    <button onclick="openHabitModal()" class="flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold px-4 py-2 rounded-xl text-sm transition-all shadow-md shadow-emerald-500/20 active:scale-95">
+                        <i class="fa-solid fa-plus text-xs"></i>
+                        <span class="hidden sm:inline">Tambah Habit Baru</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN CONTAINER -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+        <!-- TAB 1: DASHBOARD VIEW -->
+        <div id="view-dashboard" class="space-y-8">
+            
+            <!-- Daily Progress Banner (Light Theme) -->
+            <div class="glass-card rounded-2xl p-6 sm:p-8 relative overflow-hidden bg-gradient-to-r from-emerald-50/80 via-white to-teal-50/40 border border-emerald-100">
+                <div class="absolute -right-12 -top-12 w-64 h-64 bg-emerald-200/40 rounded-full blur-3xl pointer-events-none"></div>
+                <div class="absolute right-1/3 -bottom-12 w-48 h-48 bg-teal-200/30 rounded-full blur-2xl pointer-events-none"></div>
+                
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+                    <div class="space-y-2">
+                        <div class="flex items-center gap-2 text-emerald-700 text-sm font-semibold">
+                            <i class="fa-regular fa-calendar text-xs"></i>
+                            <span id="current-date-display">Hari ini, 26 Juli 2026</span>
+                        </div>
+                        <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+                            Bangun Kebiasaan Baik bersama Yaraka! 🚀
+                        </h2>
+                        <p class="text-slate-600 text-sm max-w-xl">
+                            "Langkah-langkah kecil yang konsisten setiap hari akan membuahkan hasil yang luar biasa."
+                        </p>
+                    </div>
+
+                    <!-- Progress Gauge Card -->
+                    <div class="bg-white/90 rounded-xl p-4 border border-slate-200/80 min-w-[240px] flex flex-col gap-3 shadow-sm">
+                        <div class="flex items-center justify-between text-xs font-bold">
+                            <span class="text-slate-500 uppercase tracking-wider">Pencapaian Hari Ini</span>
+                            <span id="daily-percentage" class="text-emerald-600 text-base">0%</span>
+                        </div>
+                        <!-- Progress Bar -->
+                        <div class="w-full bg-slate-100 rounded-full h-3.5 overflow-hidden p-0.5 border border-slate-200">
+                            <div id="daily-progress-bar" class="bg-gradient-to-r from-emerald-500 via-teal-500 to-indigo-500 h-full rounded-full transition-all duration-500 ease-out" style="width: 0%"></div>
+                        </div>
+                        <div class="flex justify-between items-center text-[11px] text-slate-500 font-medium">
+                            <span id="daily-stats-count">0 dari 0 selesai</span>
+                            <span id="streak-counter-badge" class="text-amber-600 font-bold"><i class="fa-solid fa-fire mr-1 text-amber-500"></i>0 Hari Streak</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- HABITS CHECKLIST SECTION -->
+            <section class="space-y-4">
+                <div class="flex items-center justify-between flex-wrap gap-4">
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+                            <i class="fa-solid fa-list-check text-emerald-600"></i>
+                            Daftar Habit Hari Ini
+                        </h3>
+                        <p class="text-xs text-slate-500">Klik tombol centang untuk menandai habit selesai.</p>
+                    </div>
+
+                    <!-- Category Filter Pills -->
+                    <div class="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full" id="category-filters">
+                        <!-- Dynamic filter pills inserted by JS -->
+                    </div>
+                </div>
+
+                <!-- Habit Cards Container -->
+                <div id="habits-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- Dynamic habit items rendered here -->
+                </div>
+            </section>
+
+            <!-- ANALYTICS SECTION HEADER -->
+            <div class="border-t border-slate-200 pt-8">
+                <div class="mb-6">
+                    <h3 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                        <i class="fa-solid fa-chart-pie text-emerald-600"></i>
+                        Analisa Performansi (Weekly & Monthly)
+                    </h3>
+                    <p class="text-xs text-slate-500">Pantau perkembangan tren kebiasaanmu dalam warna visual yang interaktif</p>
+                </div>
+
+                <!-- WEEKLY TRACKER SECTION -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                    <!-- Weekly Bar Chart -->
+                    <div class="glass-card rounded-2xl p-5 lg:col-span-2 flex flex-col justify-between bg-white">
+                        <div class="flex items-center justify-between mb-4">
+                            <div>
+                                <h4 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+                                    <i class="fa-solid fa-chart-column text-indigo-500"></i>
+                                    Performa Minggu Ini (Senin - Minggu)
+                                </h4>
+                                <p class="text-xs text-slate-500">Total habit yang berhasil diselesaikan per hari</p>
+                            </div>
+                            <span class="text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-200 px-2.5 py-1 rounded-lg">Weekly Live</span>
+                        </div>
+                        <div class="h-64 relative">
+                            <canvas id="weeklyBarCanvas"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Weekly Doughnut Chart -->
+                    <div class="glass-card rounded-2xl p-5 flex flex-col justify-between bg-white">
+                        <div class="mb-4">
+                            <h4 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+                                <i class="fa-solid fa-circle-notch text-teal-500"></i>
+                                Persentase Keberhasilan
+                            </h4>
+                            <p class="text-xs text-slate-500">Rasio selesai vs target minggu ini</p>
+                        </div>
+                        <div class="h-56 relative flex items-center justify-center">
+                            <canvas id="weeklyPieCanvas"></canvas>
+                        </div>
+                        <div id="weekly-pie-legend" class="text-center text-xs text-slate-600 mt-2 font-medium">
+                            <!-- JS output legend -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MONTHLY TRACKER SECTION -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Monthly Bar Chart -->
+                    <div class="glass-card rounded-2xl p-5 lg:col-span-2 flex flex-col justify-between bg-white">
+                        <div class="flex items-center justify-between mb-4">
+                            <div>
+                                <h4 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+                                    <i class="fa-solid fa-chart-simple text-amber-500"></i>
+                                    Tren Bulanan (Minggu ke Minggu)
+                                </h4>
+                                <p class="text-xs text-slate-500">Akumulasi penyelesaian habit per minggu di bulan ini</p>
+                            </div>
+                            <span class="text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-lg">Bulan Ini</span>
+                        </div>
+                        <div class="h-64 relative">
+                            <canvas id="monthlyBarCanvas"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Monthly Habit Distribution Pie Chart -->
+                    <div class="glass-card rounded-2xl p-5 flex flex-col justify-between bg-white">
+                        <div class="mb-4">
+                            <h4 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+                                <i class="fa-solid fa-chart-pie text-pink-500"></i>
+                                Distribusi Habit Terpopuler
+                            </h4>
+                            <p class="text-xs text-slate-500">Habit paling konsisten dikerjakan</p>
+                        </div>
+                        <div class="h-56 relative flex items-center justify-center">
+                            <canvas id="monthlyPieCanvas"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- TAB 2: YEARLY REPORT VIEW -->
+        <div id="view-yearly" class="space-y-8 hidden">
+            
+            <!-- Header Banner Yearly -->
+            <div class="glass-card rounded-2xl p-6 sm:p-8 relative overflow-hidden bg-gradient-to-r from-emerald-50 via-teal-50 to-cyan-50 border border-emerald-100">
+                <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                    <div class="space-y-2">
+                        <div class="inline-flex items-center gap-2 text-emerald-700 text-xs font-bold uppercase tracking-wider bg-white/80 px-3 py-1 rounded-full border border-emerald-200 shadow-sm">
+                            <i class="fa-solid fa-trophy text-amber-500"></i>
+                            Annual Summary 2026
+                        </div>
+                        <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+                            Laporan Konsistensi Tahunan Yaraka
+                        </h2>
+                        <p class="text-slate-600 text-sm max-w-2xl">
+                            Visualisasi lengkap perjalanan 12 bulan penuh. Setiap jejak aktivitas membuktikan komitmenmu menuju versi terbaik diri.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Yearly Stats KPI Cards -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="glass-card bg-white rounded-xl p-5 border-l-4 border-l-emerald-500 shadow-sm">
+                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Completed</p>
+                    <p id="kpi-total-completed" class="text-2xl sm:text-3xl font-black text-slate-900 mt-1">0</p>
+                    <span class="text-[11px] text-emerald-600 font-medium mt-1 inline-block"><i class="fa-solid fa-arrow-up mr-1"></i>Aktivitas tercatat</span>
+                </div>
+                <div class="glass-card bg-white rounded-xl p-5 border-l-4 border-l-amber-500 shadow-sm">
+                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Streak Terpanjang</p>
+                    <p id="kpi-longest-streak" class="text-2xl sm:text-3xl font-black text-slate-900 mt-1">0 Hari</p>
+                    <span class="text-[11px] text-amber-600 font-medium mt-1 inline-block"><i class="fa-solid fa-fire mr-1"></i>Rekor konsistensi</span>
+                </div>
+                <div class="glass-card bg-white rounded-xl p-5 border-l-4 border-l-indigo-500 shadow-sm">
+                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Success Rate</p>
+                    <p id="kpi-success-rate" class="text-2xl sm:text-3xl font-black text-slate-900 mt-1">0%</p>
+                    <span class="text-[11px] text-indigo-600 font-medium mt-1 inline-block"><i class="fa-solid fa-bullseye mr-1"></i>Rata-rata tahunan</span>
+                </div>
+                <div class="glass-card bg-white rounded-xl p-5 border-l-4 border-l-pink-500 shadow-sm">
+                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Bulan Paling Produktif</p>
+                    <p id="kpi-best-month" class="text-xl sm:text-2xl font-black text-slate-900 mt-1 truncate">-</p>
+                    <span class="text-[11px] text-pink-600 font-medium mt-1 inline-block"><i class="fa-solid fa-star mr-1"></i>Performa puncak</span>
+                </div>
+            </div>
+
+            <!-- GitHub Style Heatmap Section -->
+            <div class="glass-card bg-white rounded-2xl p-6">
+                <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+                    <div>
+                        <h3 class="font-bold text-slate-900 text-base flex items-center gap-2">
+                            <i class="fa-solid fa-grip text-emerald-600"></i>
+                            Heatmap Konsistensi Harian (Contribution Grid)
+                        </h3>
+                        <p class="text-xs text-slate-500">Aktivitas penyelesaian habit dari Januari hingga Desember 2026</p>
+                    </div>
+                    <div class="flex items-center gap-2 text-xs text-slate-500">
+                        <span>Kurang</span>
+                        <div class="flex gap-1">
+                            <div class="w-3.5 h-3.5 rounded bg-slate-100 border border-slate-200" data-tooltip="0 habit"></div>
+                            <div class="w-3.5 h-3.5 rounded bg-emerald-200" data-tooltip="1 habit"></div>
+                            <div class="w-3.5 h-3.5 rounded bg-emerald-400" data-tooltip="2 habit"></div>
+                            <div class="w-3.5 h-3.5 rounded bg-emerald-600" data-tooltip="3 habit"></div>
+                            <div class="w-3.5 h-3.5 rounded bg-emerald-800" data-tooltip="4+ habit"></div>
+                        </div>
+                        <span>Banyak</span>
+                    </div>
+                </div>
+
+                <!-- Scrollable Grid Wrapper -->
+                <div class="overflow-x-auto pb-2">
+                    <div id="contribution-heatmap" class="min-w-[750px] grid grid-rows-7 grid-flow-col gap-1.5 p-3 bg-slate-50 rounded-xl border border-slate-200">
+                        <!-- Dynamic cells populated by JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Full Year Line Chart (12 Months) -->
+            <div class="glass-card bg-white rounded-2xl p-6">
+                <div class="flex items-center justify-between mb-6">
+                    <div>
+                        <h3 class="font-bold text-slate-900 text-base flex items-center gap-2">
+                            <i class="fa-solid fa-chart-line text-emerald-600"></i>
+                            Grafik Performa 12 Bulan (Januari - Desember 2026)
+                        </h3>
+                        <p class="text-xs text-slate-500">Tren jumlah akumulasi habit selesai setiap bulannya</p>
+                    </div>
+                </div>
+                <div class="h-80 relative">
+                    <canvas id="yearlyLineCanvas"></canvas>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- MODAL: TAMBAH HABIT BARU -->
+    <div id="habit-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm hidden transition-all duration-300">
+        <div class="glass-card bg-white w-full max-w-md rounded-2xl p-6 shadow-2xl border border-slate-200 relative transform transition-all">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between mb-6 border-b border-slate-100 pb-4">
+                <h3 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+                    <i class="fa-solid fa-plus-circle text-emerald-600"></i>
+                    Tambah Habit Baru
+                </h3>
+                <button onclick="closeHabitModal()" class="text-slate-400 hover:text-slate-700 w-8 h-8 rounded-lg flex items-center justify-center hover:bg-slate-100 transition-colors">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Modal Form -->
+            <form id="add-habit-form" onsubmit="handleSaveHabit(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Nama Habit</label>
+                    <input type="text" id="habit-title-input" required placeholder="Contoh: Push-up 30x / Lari Pagi" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-slate-800 text-sm focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Kategori</label>
+                    <select id="habit-category-input" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-slate-800 text-sm focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all">
+                        <option value="Kesehatan">Kesehatan & Olahraga</option>
+                        <option value="Belajar">Belajar & Studi</option>
+                        <option value="Produktivitas">Produktivitas & Kerja</option>
+                        <option value="Mindset">Mindset & Meditasi</option>
+                        <option value="Lainnya">Lainnya</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Warna Aksen</label>
+                    <div class="flex items-center gap-3">
+                        <label class="cursor-pointer">
+                            <input type="radio" name="habit-color" value="#10b981" checked class="peer sr-only">
+                            <div class="w-8 h-8 rounded-full bg-emerald-500 peer-checked:ring-4 peer-checked:ring-emerald-200 peer-checked:scale-110 transition-all shadow-sm"></div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" name="habit-color" value="#06b6d4" class="peer sr-only">
+                            <div class="w-8 h-8 rounded-full bg-cyan-500 peer-checked:ring-4 peer-checked:ring-cyan-200 peer-checked:scale-110 transition-all shadow-sm"></div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" name="habit-color" value="#8b5cf6" class="peer sr-only">
+                            <div class="w-8 h-8 rounded-full bg-purple-500 peer-checked:ring-4 peer-checked:ring-purple-200 peer-checked:scale-110 transition-all shadow-sm"></div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" name="habit-color" value="#f59e0b" class="peer sr-only">
+                            <div class="w-8 h-8 rounded-full bg-amber-500 peer-checked:ring-4 peer-checked:ring-amber-200 peer-checked:scale-110 transition-all shadow-sm"></div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" name="habit-color" value="#ec4899" class="peer sr-only">
+                            <div class="w-8 h-8 rounded-full bg-pink-500 peer-checked:ring-4 peer-checked:ring-pink-200 peer-checked:scale-110 transition-all shadow-sm"></div>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="pt-4 flex items-center justify-end gap-3">
+                    <button type="button" onclick="closeHabitModal()" class="px-4 py-2 rounded-xl text-sm font-semibold text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-all">Batal</button>
+                    <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-5 py-2 rounded-xl text-sm transition-all shadow-md shadow-emerald-500/20 active:scale-95">Simpan Habit</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- TOAST NOTIFICATION SYSTEM -->
+    <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <script>
+        /* ==========================================
+           1. DATA STATE & DUMMY INITIALIZATION
+           ========================================== */
+        
+        // Key for LocalStorage (Version 0.002)
+        const STORAGE_KEY = 'YARAKA_HABIT_DATA_2026_V2';
+
+        // Default Today Date string format YYYY-MM-DD
+        const todayObj = new Date();
+        const TODAY = formatDate(todayObj);
+
+        // Active State
+        let habits = [];
+        let activeFilter = 'All';
+        let currentTab = 'dashboard';
+
+        // Chart Instances
+        let weeklyBarChartInstance = null;
+        let weeklyPieChartInstance = null;
+        let monthlyBarChartInstance = null;
+        let monthlyPieChartInstance = null;
+        let yearlyLineChartInstance = null;
+
+        // Color Palettes for Vibrant Charts
+        const VIBRANT_PALETTE = [
+            '#6366f1', // Indigo
+            '#10b981', // Emerald
+            '#f59e0b', // Amber
+            '#ec4899', // Pink
+            '#06b6d4', // Cyan
+            '#8b5cf6', // Purple
+            '#f97316'  // Orange
+        ];
+
+        // Initialize Application
+        window.addEventListener('DOMContentLoaded', () => {
+            initData();
+            updateDateHeader();
+            renderCategoryFilters();
+            renderHabits();
+            renderDashboardCharts();
+            renderYearlyHeatmap();
+            renderYearlyCharts();
+            updateKPIs();
+        });
+
+        // Helper: Format Date YYYY-MM-DD
+        function formatDate(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        // Helper: Get Display Date in Indonesian
+        function updateDateHeader() {
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            const dateStr = todayObj.toLocaleDateString('id-ID', options);
+            document.getElementById('current-date-display').innerText = dateStr;
+        }
+
+        // Load Initial Data or Dummy Data
+        function initData() {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                try {
+                    habits = JSON.parse(saved);
+                } catch (e) {
+                    habits = getDummyData();
+                }
+            } else {
+                habits = getDummyData();
+                saveData();
+            }
+        }
+
+        function saveData() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(habits));
+        }
+
+        /* ==========================================
+           2. REALISTIC DUMMY DATA GENERATOR
+           ========================================== */
+        function getDummyData() {
+            const pastDates = [];
+            const curDate = new Date(2026, 0, 1);
+
+            // Pengaturan v0.002: Memastikan HARI INI (TODAY) TIDAK otomatis ter-checklist
+            // Riwayat dummy hanya di-generate hingga kemarin (yesterday)
+            const yesterday = new Date(todayObj);
+            yesterday.setDate(yesterday.getDate() - 1);
+
+            while(curDate <= yesterday) {
+                pastDates.push(formatDate(curDate));
+                curDate.setDate(curDate.getDate() + 1);
+            }
+
+            const randomHistory = (probability) => pastDates.filter(() => Math.random() < probability);
+
+            return [
+                {
+                    id: 'habit-1',
+                    title: 'Push-up & Plank Harian',
+                    category: 'Kesehatan',
+                    color: '#10b981',
+                    createdAt: '2026-01-01',
+                    history: randomHistory(0.78),
+                    streak: 9
+                },
+                {
+                    id: 'habit-2',
+                    title: 'Membaca Persiapan Studi',
+                    category: 'Belajar',
+                    color: '#06b6d4',
+                    createdAt: '2026-01-01',
+                    history: randomHistory(0.68),
+                    streak: 6
+                },
+                {
+                    id: 'habit-3',
+                    title: 'Minum Air 2L',
+                    category: 'Kesehatan',
+                    color: '#6366f1',
+                    createdAt: '2026-01-01',
+                    history: randomHistory(0.88),
+                    streak: 14
+                },
+                {
+                    id: 'habit-4',
+                    title: 'Meditasi & Mindset',
+                    category: 'Mindset',
+                    color: '#8b5cf6',
+                    createdAt: '2026-01-01',
+                    history: randomHistory(0.55),
+                    streak: 3
+                }
+            ];
+        }
+
+        /* ==========================================
+           3. UI RENDERERS & EVENT HANDLERS
+           ========================================== */
+        
+        function switchTab(tabName) {
+            currentTab = tabName;
+            const dashView = document.getElementById('view-dashboard');
+            const yearlyView = document.getElementById('view-yearly');
+            const dashBtn = document.getElementById('tab-dashboard-btn');
+            const yearlyBtn = document.getElementById('tab-yearly-btn');
+
+            if (tabName === 'dashboard') {
+                dashView.classList.remove('hidden');
+                yearlyView.classList.add('hidden');
+
+                dashBtn.className = "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all text-white bg-emerald-600 shadow-sm shadow-emerald-600/30";
+                yearlyBtn.className = "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all text-slate-600 hover:text-slate-900 hover:bg-white/60";
+                
+                renderDashboardCharts();
+            } else {
+                dashView.classList.add('hidden');
+                yearlyView.classList.remove('hidden');
+
+                yearlyBtn.className = "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all text-white bg-emerald-600 shadow-sm shadow-emerald-600/30";
+                dashBtn.className = "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all text-slate-600 hover:text-slate-900 hover:bg-white/60";
+                
+                renderYearlyHeatmap();
+                renderYearlyCharts();
+                updateKPIs();
+            }
+        }
+
+        // Category Filter Rendering
+        function renderCategoryFilters() {
+            const categories = ['All', ...new Set(habits.map(h => h.category))];
+            const container = document.getElementById('category-filters');
+            
+            container.innerHTML = categories.map(cat => `
+                <button onclick="filterCategory('${cat}')" 
+                    class="px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap ${activeFilter === cat ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-600/20' : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200'}">
+                    ${cat}
+                </button>
+            `).join('');
+        }
+
+        function filterCategory(category) {
+            activeFilter = category;
+            renderCategoryFilters();
+            renderHabits();
+        }
+
+        // Render Today's Habits Cards
+        function renderHabits() {
+            const container = document.getElementById('habits-grid');
+            const filtered = activeFilter === 'All' ? habits : habits.filter(h => h.category === activeFilter);
+
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="col-span-full text-center py-12 glass-card bg-white rounded-2xl border border-slate-200">
+                        <i class="fa-solid fa-folder-open text-4xl text-slate-300 mb-3"></i>
+                        <p class="text-slate-500 text-sm font-semibold">Belum ada habit pada kategori ini.</p>
+                        <button onclick="openHabitModal()" class="mt-3 text-emerald-600 hover:underline text-xs font-bold">
+                            + Tambah Habit Baru
+                        </button>
+                    </div>
+                `;
+                updateProgressHeader();
+                return;
+            }
+
+            container.innerHTML = filtered.map(habit => {
+                const isCompletedToday = habit.history.includes(TODAY);
+                return `
+                    <div class="habit-card glass-card bg-white rounded-2xl p-5 border border-slate-200/80 flex items-center justify-between gap-4 relative overflow-hidden">
+                        <!-- Color accent line -->
+                        <div class="absolute left-0 top-0 bottom-0 w-1.5" style="background-color: ${habit.color}"></div>
+                        
+                        <div class="space-y-1 pl-2">
+                            <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 border border-slate-200">
+                                ${habit.category}
+                            </span>
+                            <h4 class="font-bold text-slate-800 text-sm md:text-base ${isCompletedToday ? 'line-through text-slate-400' : ''}">
+                                ${habit.title}
+                            </h4>
+                            <div class="flex items-center gap-3 text-xs text-slate-500 font-medium">
+                                <span class="flex items-center gap-1 text-amber-600 font-bold">
+                                    <i class="fa-solid fa-fire text-amber-500"></i> ${habit.streak || 0} hari
+                                </span>
+                                <span>•</span>
+                                <span>Total: ${habit.history.length}x</span>
+                            </div>
+                        </div>
+
+                        <!-- Checkbox Button (Quick Toggle) -->
+                        <div class="flex items-center gap-2">
+                            <button onclick="toggleHabit('${habit.id}')" 
+                                class="w-11 h-11 rounded-xl flex items-center justify-center transition-all ${isCompletedToday ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/30 scale-105' : 'bg-slate-100 text-slate-400 hover:text-emerald-600 border border-slate-200 hover:border-emerald-500/50'}">
+                                <i class="fa-solid ${isCompletedToday ? 'fa-check text-lg font-black' : 'fa-circle text-xs'}"></i>
+                            </button>
+                            
+                            <!-- Delete Button -->
+                            <button onclick="deleteHabit('${habit.id}')" data-tooltip="Hapus Habit" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-slate-100 transition-colors">
+                                <i class="fa-solid fa-trash-can text-xs"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            updateProgressHeader();
+        }
+
+        // Toggle Habit Done/Undone
+        function toggleHabit(id) {
+            const habit = habits.find(h => h.id === id);
+            if (!habit) return;
+
+            const index = habit.history.indexOf(TODAY);
+            if (index > -1) {
+                habit.history.splice(index, 1);
+                if (habit.streak > 0) habit.streak--;
+                showToast(`Habit "${habit.title}" dibatalkan.`, 'info');
+            } else {
+                habit.history.push(TODAY);
+                habit.streak = (habit.streak || 0) + 1;
+                showToast(`Keren! Habit "${habit.title}" selesai! 🔥`, 'success');
+                
+                confetti({
+                    particleCount: 60,
+                    spread: 70,
+                    origin: { y: 0.8 },
+                    colors: ['#10b981', '#3b82f6', '#f59e0b', '#ec4899']
+                });
+            }
+
+            saveData();
+            renderHabits();
+            renderDashboardCharts();
+        }
+
+        function deleteHabit(id) {
+            habits = habits.filter(h => h.id !== id);
+            saveData();
+            renderCategoryFilters();
+            renderHabits();
+            renderDashboardCharts();
+            showToast('Habit telah dihapus.', 'info');
+        }
+
+        function updateProgressHeader() {
+            const total = habits.length;
+            if (total === 0) {
+                document.getElementById('daily-percentage').innerText = '0%';
+                document.getElementById('daily-progress-bar').style.width = '0%';
+                document.getElementById('daily-stats-count').innerText = '0 habit tersedia';
+                return;
+            }
+
+            const completed = habits.filter(h => h.history.includes(TODAY)).length;
+            const percentage = Math.round((completed / total) * 100);
+
+            document.getElementById('daily-percentage').innerText = `${percentage}%`;
+            document.getElementById('daily-progress-bar').style.width = `${percentage}%`;
+            document.getElementById('daily-stats-count').innerText = `${completed} dari ${total} selesai`;
+
+            const maxStreak = habits.reduce((max, h) => Math.max(max, h.streak || 0), 0);
+            document.getElementById('streak-counter-badge').innerHTML = `<i class="fa-solid fa-fire mr-1 text-amber-500"></i>Max ${maxStreak} Hari Streak`;
+        }
+
+        // Modal Handlers
+        function openHabitModal() {
+            document.getElementById('habit-modal').classList.remove('hidden');
+        }
+
+        function closeHabitModal() {
+            document.getElementById('habit-modal').classList.add('hidden');
+            document.getElementById('add-habit-form').reset();
+        }
+
+        function handleSaveHabit(e) {
+            e.preventDefault();
+            const title = document.getElementById('habit-title-input').value.trim();
+            const category = document.getElementById('habit-category-input').value;
+            const color = document.querySelector('input[name="habit-color"]:checked').value;
+
+            if (!title) return;
+
+            const newHabit = {
+                id: 'habit-' + Date.now(),
+                title,
+                category,
+                color,
+                createdAt: TODAY,
+                history: [TODAY],
+                streak: 1
+            };
+
+            habits.push(newHabit);
+            saveData();
+            closeHabitModal();
+            renderCategoryFilters();
+            renderHabits();
+            renderDashboardCharts();
+            
+            showToast(`Habit "${title}" berhasil ditambahkan! 🎉`, 'success');
+        }
+
+        // Toast Notification System
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `px-4 py-3 rounded-xl bg-slate-900 text-xs font-bold text-white shadow-xl flex items-center gap-2 transform translate-y-4 opacity-0 transition-all duration-300 pointer-events-auto border border-slate-800`;
+            
+            toast.innerHTML = `
+                <i class="fa-solid ${type === 'success' ? 'fa-circle-check text-emerald-400' : 'fa-circle-info text-cyan-400'}"></i>
+                <span>${message}</span>
+            `;
+
+            container.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.classList.remove('translate-y-4', 'opacity-0');
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.add('translate-y-4', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        /* ==========================================
+           4. COLORFUL CHARTS & ANALYTICS
+           ========================================== */
+
+        function renderDashboardCharts() {
+            renderWeeklyBarChart();
+            renderWeeklyPieChart();
+            renderMonthlyBarChart();
+            renderMonthlyPieChart();
+        }
+
+        function getWeeklyDays() {
+            const days = [];
+            const curr = new Date();
+            const first = curr.getDate() - curr.getDay() + 1; // Monday
+
+            for (let i = 0; i < 7; i++) {
+                const day = new Date(curr.setDate(first + i));
+                days.push({
+                    dateStr: formatDate(day),
+                    dayLabel: day.toLocaleDateString('id-ID', { weekday: 'short' })
+                });
+            }
+            return days;
+        }
+
+        // 1. Colorful Weekly Bar Chart
+        function renderWeeklyBarChart() {
+            const weekDays = getWeeklyDays();
+            const labels = weekDays.map(d => d.dayLabel);
+            const dataCounts = weekDays.map(d => {
+                return habits.reduce((count, h) => count + (h.history.includes(d.dateStr) ? 1 : 0), 0);
+            });
+
+            const ctx = document.getElementById('weeklyBarCanvas').getContext('2d');
+            if (weeklyBarChartInstance) weeklyBarChartInstance.destroy();
+
+            weeklyBarChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Habit Selesai',
+                        data: dataCounts,
+                        backgroundColor: VIBRANT_PALETTE,
+                        borderRadius: 8,
+                        borderSkipped: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#1e293b',
+                            titleColor: '#ffffff',
+                            bodyColor: '#38bdf8',
+                            borderColor: '#334155',
+                            borderWidth: 1,
+                            padding: 10
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: '#64748b', font: { size: 11, weight: '600' } }
+                        },
+                        y: {
+                            grid: { color: 'rgba(0, 0, 0, 0.05)' },
+                            ticks: { color: '#64748b', stepSize: 1, font: { size: 11 } },
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        // 2. Weekly Doughnut Chart
+        function renderWeeklyPieChart() {
+            const weekDays = getWeeklyDays();
+            let totalPossible = habits.length * 7;
+            let totalCompleted = 0;
+
+            weekDays.forEach(d => {
+                habits.forEach(h => {
+                    if (h.history.includes(d.dateStr)) totalCompleted++;
+                });
+            });
+
+            let remaining = Math.max(0, totalPossible - totalCompleted);
+            if (totalPossible === 0) { totalCompleted = 0; remaining = 1; }
+
+            const ctx = document.getElementById('weeklyPieCanvas').getContext('2d');
+            if (weeklyPieChartInstance) weeklyPieChartInstance.destroy();
+
+            weeklyPieChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Selesai', 'Belum Selesai'],
+                    datasets: [{
+                        data: [totalCompleted, remaining],
+                        backgroundColor: ['#10b981', '#e2e8f0'],
+                        borderColor: '#ffffff',
+                        borderWidth: 3,
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '70%',
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+
+            const rate = totalPossible > 0 ? Math.round((totalCompleted / totalPossible) * 100) : 0;
+            document.getElementById('weekly-pie-legend').innerHTML = `
+                <span class="text-emerald-600 font-extrabold text-base">${rate}%</span> Success Rate Minggu Ini
+            `;
+        }
+
+        // 3. Colorful Monthly Bar Chart
+        function renderMonthlyBarChart() {
+            const ctx = document.getElementById('monthlyBarCanvas').getContext('2d');
+            if (monthlyBarChartInstance) monthlyBarChartInstance.destroy();
+
+            const labels = ['Minggu 1', 'Minggu 2', 'Minggu 3', 'Minggu 4'];
+            const counts = [0, 0, 0, 0];
+
+            const now = new Date();
+            habits.forEach(h => {
+                h.history.forEach(dateStr => {
+                    const d = new Date(dateStr);
+                    if (d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()) {
+                        const dayOfMonth = d.getDate();
+                        const weekIdx = Math.min(3, Math.floor((dayOfMonth - 1) / 7));
+                        counts[weekIdx]++;
+                    }
+                });
+            });
+
+            monthlyBarChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Total Habit Selesai',
+                        data: counts,
+                        backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ec4899'],
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { color: '#64748b', font: { weight: '600' } } },
+                        y: { grid: { color: 'rgba(0, 0, 0, 0.05)' }, ticks: { color: '#64748b', beginAtZero: true } }
+                    }
+                }
+            });
+        }
+
+        // 4. Monthly Distribution Pie Chart
+        function renderMonthlyPieChart() {
+            const ctx = document.getElementById('monthlyPieCanvas').getContext('2d');
+            if (monthlyPieChartInstance) monthlyPieChartInstance.destroy();
+
+            const labels = habits.map(h => h.title);
+            const colors = habits.map((h, i) => h.color || VIBRANT_PALETTE[i % VIBRANT_PALETTE.length]);
+            const dataCounts = habits.map(h => h.history.length);
+
+            monthlyPieChartInstance = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: labels.length ? labels : ['Belum ada Data'],
+                    datasets: [{
+                        data: dataCounts.length && dataCounts.some(c => c > 0) ? dataCounts : [1],
+                        backgroundColor: colors.length ? colors : ['#cbd5e1'],
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { color: '#475569', font: { size: 10, weight: '500' }, boxWidth: 12 }
+                        }
+                    }
+                }
+            });
+        }
+
+        /* ==========================================
+           5. YEARLY REPORT & HEATMAP LOGIC
+           ========================================== */
+
+        function renderYearlyHeatmap() {
+            const container = document.getElementById('contribution-heatmap');
+            container.innerHTML = '';
+
+            const year = 2026;
+            const startDate = new Date(year, 0, 1);
+            const daysCount = 364;
+
+            const countMap = {};
+            habits.forEach(h => {
+                h.history.forEach(dateStr => {
+                    countMap[dateStr] = (countMap[dateStr] || 0) + 1;
+                });
+            });
+
+            for (let i = 0; i < daysCount; i++) {
+                const cur = new Date(startDate);
+                cur.setDate(startDate.getDate() + i);
+                const dStr = formatDate(cur);
+                const count = countMap[dStr] || 0;
+
+                let bgClass = 'bg-slate-100 border border-slate-200/60';
+                if (count === 1) bgClass = 'bg-emerald-200';
+                else if (count === 2) bgClass = 'bg-emerald-400';
+                else if (count === 3) bgClass = 'bg-emerald-600';
+                else if (count >= 4) bgClass = 'bg-emerald-800';
+
+                const cell = document.createElement('div');
+                cell.className = `w-3.5 h-3.5 rounded ${bgClass} transition-all hover:scale-125 hover:z-10 cursor-pointer shadow-2xs`;
+                cell.setAttribute('data-tooltip', `${dStr}: ${count} habit selesai`);
+                
+                container.appendChild(cell);
+            }
+        }
+
+        function renderYearlyCharts() {
+            const ctx = document.getElementById('yearlyLineCanvas').getContext('2d');
+            if (yearlyLineChartInstance) yearlyLineChartInstance.destroy();
+
+            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agt', 'Sep', 'Okt', 'Nov', 'Des'];
+            const monthlyCounts = new Array(12).fill(0);
+
+            habits.forEach(h => {
+                h.history.forEach(dateStr => {
+                    const d = new Date(dateStr);
+                    if (d.getFullYear() === 2026) {
+                        monthlyCounts[d.getMonth()]++;
+                    }
+                });
+            });
+
+            yearlyLineChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: monthNames,
+                    datasets: [{
+                        label: 'Total Habit Selesai 2026',
+                        data: monthlyCounts,
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.12)',
+                        fill: true,
+                        tension: 0.35,
+                        pointBackgroundColor: '#10b981',
+                        pointBorderColor: '#ffffff',
+                        pointBorderWidth: 2,
+                        pointRadius: 5,
+                        pointHoverRadius: 7
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#1e293b',
+                            titleColor: '#ffffff',
+                            bodyColor: '#34d399',
+                            borderColor: '#334155',
+                            borderWidth: 1
+                        }
+                    },
+                    scales: {
+                        x: { grid: { color: 'rgba(0, 0, 0, 0.05)' }, ticks: { color: '#64748b', font: { weight: '600' } } },
+                        y: { grid: { color: 'rgba(0, 0, 0, 0.05)' }, ticks: { color: '#64748b', beginAtZero: true } }
+                    }
+                }
+            });
+        }
+
+        function updateKPIs() {
+            let total = 0;
+            habits.forEach(h => total += h.history.length);
+            document.getElementById('kpi-total-completed').innerText = total;
+
+            const maxStreak = habits.reduce((max, h) => Math.max(max, h.streak || 0), 0);
+            document.getElementById('kpi-longest-streak').innerText = `${maxStreak} Hari`;
+
+            const totalPossible = (habits.length * 365) || 1;
+            const rate = Math.min(100, Math.round((total / totalPossible) * 100));
+            document.getElementById('kpi-success-rate').innerText = `${rate}%`;
+
+            const monthCounts = new Array(12).fill(0);
+            const monthNames = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+            
+            habits.forEach(h => {
+                h.history.forEach(dateStr => {
+                    const d = new Date(dateStr);
+                    if (d.getFullYear() === 2026) monthCounts[d.getMonth()]++;
+                });
+            });
+
+            let maxIdx = 0;
+            for (let i = 1; i < 12; i++) {
+                if (monthCounts[i] > monthCounts[maxIdx]) maxIdx = i;
+            }
+            document.getElementById('kpi-best-month').innerText = monthCounts[maxIdx] > 0 ? monthNames[maxIdx] : '-';
+        }
+
+        /* ==========================================
+           6. EXPORT TO EXCEL (.XLS/.XLSX) FUNCTIONALITY
+           ========================================== */
+        function exportToExcel() {
+            if (typeof XLSX === 'undefined') {
+                showToast('Library SheetJS belum siap, silakan coba lagi.', 'info');
+                return;
+            }
+
+            try {
+                const wb = XLSX.utils.book_new();
+
+                // ----------------------------------------------------
+                // SHEET 1: RINGKASAN & METRIK PERFORMA
+                // ----------------------------------------------------
+                const summarySheetData = [
+                    ["YARAKA HABIT TRACKER - LAPORAN PERFORMA & KONSISTENSI"],
+                    ["Diproses Pada", new Date().toLocaleDateString('id-ID', { dateStyle: 'full', timeStyle: 'medium' })],
+                    [""],
+                    ["1. METRIK UTAMA"],
+                    ["Total Habit Aktif", habits.length],
+                    ["Total Aktivitas Selesai", document.getElementById('kpi-total-completed')?.innerText || 0],
+                    ["Streak Terpanjang", document.getElementById('kpi-longest-streak')?.innerText || "0 Hari"],
+                    ["Tingkat Keberhasilan (Success Rate)", document.getElementById('kpi-success-rate')?.innerText || "0%"],
+                    ["Bulan Paling Produktif", document.getElementById('kpi-best-month')?.innerText || "-"],
+                    [""],
+                    ["2. PERFORMA MINGGU INI (SENIN - MINGGU)"],
+                    ["Hari", "Tanggal", "Total Habit Selesai"]
+                ];
+
+                const weekDays = getWeeklyDays();
+                weekDays.forEach(d => {
+                    const count = habits.reduce((acc, h) => acc + (h.history.includes(d.dateStr) ? 1 : 0), 0);
+                    summarySheetData.push([d.dayLabel, d.dateStr, count]);
+                });
+
+                summarySheetData.push([""]);
+                summarySheetData.push(["3. TREN BULANAN (MINGGU 1 - 4)"]);
+                summarySheetData.push(["Minggu ke-", "Total Penyelesaian"]);
+
+                const now = new Date();
+                const monthlyCounts = [0, 0, 0, 0];
+                habits.forEach(h => {
+                    h.history.forEach(dateStr => {
+                        const d = new Date(dateStr);
+                        if (d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()) {
+                            const weekIdx = Math.min(3, Math.floor((d.getDate() - 1) / 7));
+                            monthlyCounts[weekIdx]++;
+                        }
+                    });
+                });
+                monthlyCounts.forEach((cnt, idx) => {
+                    summarySheetData.push([`Minggu ${idx + 1}`, cnt]);
+                });
+
+                const wsSummary = XLSX.utils.aoa_to_sheet(summarySheetData);
+                wsSummary['!cols'] = [{ wch: 32 }, { wch: 22 }, { wch: 20 }];
+                XLSX.utils.book_append_sheet(wb, wsSummary, "Ringkasan Performa");
+
+                // ----------------------------------------------------
+                // SHEET 2: DETAIL HABIT & HISTORI LOG
+                // ----------------------------------------------------
+                const detailSheetData = [
+                    ["ID Habit", "Nama Habit", "Kategori", "Aksen Warna", "Streak Saat Ini", "Total Selesai", "Tanggal Dibuat", "Daftar Tanggal Selesai (Histori)"]
+                ];
+
+                habits.forEach(h => {
+                    detailSheetData.push([
+                        h.id,
+                        h.title,
+                        h.category,
+                        h.color,
+                        `${h.streak || 0} Hari`,
+                        h.history.length,
+                        h.createdAt || "-",
+                        [...h.history].sort().join(", ")
+                    ]);
+                });
+
+                const wsDetail = XLSX.utils.aoa_to_sheet(detailSheetData);
+                wsDetail['!cols'] = [{ wch: 14 }, { wch: 30 }, { wch: 16 }, { wch: 12 }, { wch: 16 }, { wch: 15 }, { wch: 15 }, { wch: 60 }];
+                XLSX.utils.book_append_sheet(wb, wsDetail, "Detail Habit");
+
+                // Unduh File Excel (.xlsx / kompatibel dengan .xls)
+                const fileName = `Yaraka_Habit_Report_${formatDate(new Date())}.xlsx`;
+                XLSX.writeFile(wb, fileName);
+
+                showToast('Laporan Excel (.xls/.xlsx) berhasil diunduh! 📊', 'success');
+            } catch (err) {
+                console.error(err);
+                showToast('Gagal mengunduh file Excel.', 'info');
+            }
+        }
+
+    </script>
+</body>
+</html>
